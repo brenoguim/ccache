@@ -208,10 +208,7 @@ static bool generating_diagnostics;
 static bool seen_split_dwarf;
 
 // Relocating debuginfo in the format old=new.
-static char** debug_prefix_maps = NULL;
-
-// Size of debug_prefix_maps list.
-static size_t debug_prefix_maps_len = 0;
+static std::vector<char*> debug_prefix_maps;
 
 // Is the compiler being asked to output coverage data (.gcda) at runtime?
 static bool profile_arcs;
@@ -1758,8 +1755,7 @@ hash_common_info(struct args* args, struct hash* hash)
   // Possibly hash the current working directory.
   if (generating_debuginfo && g_config.hash_dir()) {
     char* cwd = gnu_getcwd();
-    for (size_t i = 0; i < debug_prefix_maps_len; i++) {
-      char* map = debug_prefix_maps[i];
+    for (char* map : debug_prefix_maps) {
       char* sep = strchr(map, '=');
       if (sep) {
         char* old_path = x_strndup(map, sep - map);
@@ -2613,10 +2609,8 @@ cc_process_args(struct args* args,
 
     if (str_startswith(argv[i], "-fdebug-prefix-map=")
         || str_startswith(argv[i], "-ffile-prefix-map=")) {
-      debug_prefix_maps = static_cast<char**>(x_realloc(
-        debug_prefix_maps, (debug_prefix_maps_len + 1) * sizeof(char*)));
-      debug_prefix_maps[debug_prefix_maps_len++] =
-        x_strdup(&argv[i][argv[i][2] == 'f' ? 18 : 19]);
+      debug_prefix_maps.push_back(
+        x_strdup(&argv[i][argv[i][2] == 'f' ? 18 : 19]));
       args_add(common_args, argv[i]);
       continue;
     }
@@ -3620,11 +3614,10 @@ cc_reset(void)
   free_and_nullify(primary_config_path);
   free_and_nullify(secondary_config_path);
   free_and_nullify(current_working_dir);
-  for (size_t i = 0; i < debug_prefix_maps_len; i++) {
-    free_and_nullify(debug_prefix_maps[i]);
+  for (auto& map : debug_prefix_maps) {
+    free_and_nullify(map);
   }
-  free_and_nullify(debug_prefix_maps);
-  debug_prefix_maps_len = 0;
+  debug_prefix_maps.clear();
   free_and_nullify(profile_dir);
   for (size_t i = 0; i < sanitize_blacklists_len; i++) {
     free_and_nullify(sanitize_blacklists[i]);
