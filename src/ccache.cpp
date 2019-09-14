@@ -480,11 +480,10 @@ clean_up_internal_tempdir(void)
       continue;
     }
 
-    char* path = format("%s/%s", temp_dir(), entry->d_name).release();
-    if (x_lstat(path, &st) == 0 && st.st_mtime + 3600 < now) {
-      tmp_unlink(path);
+    auto path = format("%s/%s", temp_dir(), entry->d_name);
+    if (x_lstat(path.get(), &st) == 0 && st.st_mtime + 3600 < now) {
+      tmp_unlink(path.get());
     }
-    free(path);
   }
 
   closedir(dir);
@@ -503,9 +502,8 @@ dump_debug_log_buffer_exitfn(void* context)
     return;
   }
 
-  char* path = format("%s.ccache-log", (const char*)context).release();
-  cc_dump_debug_log_buffer(path);
-  free(path);
+  auto path = format("%s.ccache-log", (const char*)context);
+  cc_dump_debug_log_buffer(path.get());
 }
 
 static void
@@ -519,15 +517,14 @@ init_hash_debug(struct hash* hash,
     return;
   }
 
-  char* path = format("%s.ccache-input-%c", obj_path, type).release();
-  FILE* debug_binary_file = fopen(path, "wb");
+  auto path = format("%s.ccache-input-%c", obj_path, type);
+  FILE* debug_binary_file = fopen(path.get(), "wb");
   if (debug_binary_file) {
     hash_enable_debug(hash, section_name, debug_binary_file, debug_text_file);
     exitfn_add(fclose_exitfn, debug_binary_file);
   } else {
-    cc_log("Failed to open %s: %s", path, strerror(errno));
+    cc_log("Failed to open %s: %s", path.get(), strerror(errno));
   }
-  free(path);
 }
 
 static enum guessed_compiler
@@ -1482,10 +1479,8 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
     // Remove any CACHEDIR.TAG on the cache_dir level where it was located in
     // previous ccache versions.
     if (getpid() % 1000 == 0) {
-      char* path =
-        format("%s/CACHEDIR.TAG", g_config.cache_dir().c_str()).release();
-      x_unlink(path);
-      free(path);
+      auto path = format("%s/CACHEDIR.TAG", g_config.cache_dir().c_str());
+      x_unlink(path.get());
     }
   }
 
@@ -1674,12 +1669,11 @@ hash_nvcc_host_compiler(struct hash* hash,
 #endif
     for (size_t i = 0; i < ARRAY_SIZE(compilers); i++) {
       if (ccbin) {
-        char* path = format("%s/%s", ccbin, compilers[i]).release();
+        auto path = format("%s/%s", ccbin, compilers[i]);
         struct stat st;
-        if (stat(path, &st) == 0) {
-          hash_compiler(hash, &st, path, false);
+        if (stat(path.get(), &st) == 0) {
+          hash_compiler(hash, &st, path.get(), false);
         }
-        free(path);
       } else {
         char* path = find_executable(compilers[i], MYNAME);
         if (path) {
@@ -2294,27 +2288,24 @@ detect_pch(const char* option, const char* arg, bool* found_pch)
       pch_file = x_strdup(arg);
     }
   } else {
-    char* gchpath = format("%s.gch", arg).release();
-    if (stat(gchpath, &st) == 0) {
-      cc_log("Detected use of precompiled header: %s", gchpath);
-      pch_file = x_strdup(gchpath);
+    auto gchpath = format("%s.gch", arg);
+    if (stat(gchpath.get(), &st) == 0) {
+      cc_log("Detected use of precompiled header: %s", gchpath.get());
+      pch_file = x_strdup(gchpath.get());
     } else {
-      char* pchpath = format("%s.pch", arg).release();
-      if (stat(pchpath, &st) == 0) {
-        cc_log("Detected use of precompiled header: %s", pchpath);
-        pch_file = x_strdup(pchpath);
+      auto pchpath = format("%s.pch", arg);
+      if (stat(pchpath.get(), &st) == 0) {
+        cc_log("Detected use of precompiled header: %s", pchpath.get());
+        pch_file = x_strdup(pchpath.get());
       } else {
         // clang may use pretokenized headers.
-        char* pthpath = format("%s.pth", arg).release();
-        if (stat(pthpath, &st) == 0) {
-          cc_log("Detected use of pretokenized header: %s", pthpath);
-          pch_file = x_strdup(pthpath);
+        auto pthpath = format("%s.pth", arg);
+        if (stat(pthpath.get(), &st) == 0) {
+          cc_log("Detected use of pretokenized header: %s", pthpath.get());
+          pch_file = x_strdup(pthpath.get());
         }
-        free(pthpath);
       }
-      free(pchpath);
     }
-    free(gchpath);
   }
 
   if (pch_file) {
@@ -2677,9 +2668,8 @@ cc_process_args(struct args* args,
         args_add(dep_args, "-MF");
         args_add(dep_args, output_dep);
       } else {
-        char* option = format("-MF%s", output_dep).release();
-        args_add(dep_args, option);
-        free(option);
+        auto option = format("-MF%s", output_dep);
+        args_add(dep_args, option.get());
       }
       continue;
     }
@@ -2703,11 +2693,10 @@ cc_process_args(struct args* args,
       } else {
         char* arg_opt = x_strndup(argv[i], 3);
         relpath = make_relative_path(x_strdup(argv[i] + 3));
-        char* option = format("%s%s", arg_opt, relpath).release();
-        args_add(dep_args, option);
+        auto option = format("%s%s", arg_opt, relpath);
+        args_add(dep_args, option.get());
         free(arg_opt);
         free(relpath);
-        free(option);
       }
       continue;
     }
@@ -2745,10 +2734,9 @@ cc_process_args(struct args* args,
     }
     if (str_startswith(argv[i], "--sysroot=")) {
       char* relpath = make_relative_path(x_strdup(argv[i] + 10));
-      char* option = format("--sysroot=%s", relpath).release();
-      args_add(common_args, option);
+      auto option = format("--sysroot=%s", relpath);
+      args_add(common_args, option.get());
       free(relpath);
-      free(option);
       continue;
     }
     // Alternate form of specifying sysroot without =
@@ -2989,13 +2977,12 @@ cc_process_args(struct args* args,
         char* option = x_strndup(argv[i], slash_pos - argv[i]);
         if (compopt_takes_concat_arg(option) && compopt_takes_path(option)) {
           char* relpath = make_relative_path(x_strdup(slash_pos));
-          char* new_option = format("%s%s", option, relpath).release();
+          auto new_option = format("%s%s", option, relpath);
           if (compopt_affects_cpp(option)) {
-            args_add(cpp_args, new_option);
+            args_add(cpp_args, new_option.get());
           } else {
-            args_add(common_args, new_option);
+            args_add(common_args, new_option.get());
           }
-          free(new_option);
           free(relpath);
           free(option);
           continue;
@@ -3126,14 +3113,13 @@ cc_process_args(struct args* args,
         dependency_target_specified = true;
         char* relpath_obj = make_relative_path(x_strdup(abspath_obj));
         // ensure compiler gets relative path.
-        char* relpath_both = format("%s %s", output_dep, relpath_obj).release();
+        auto relpath_both = format("%s %s", output_dep, relpath_obj);
         if (using_sunpro_dependencies) {
-          x_setenv("SUNPRO_DEPENDENCIES", relpath_both);
+          x_setenv("SUNPRO_DEPENDENCIES", relpath_both.get());
         } else {
-          x_setenv("DEPENDENCIES_OUTPUT", relpath_both);
+          x_setenv("DEPENDENCIES_OUTPUT", relpath_both.get());
         }
         free(relpath_obj);
-        free(relpath_both);
       } else {
         // it's the "file" form.
 
@@ -3433,10 +3419,10 @@ create_initial_config_file(const char* path)
 
   unsigned max_files;
   uint64_t max_size;
-  char* stats_dir = format("%s/0", g_config.cache_dir().c_str()).release();
+  auto stats_dir = format("%s/0", g_config.cache_dir().c_str());
   struct stat st;
-  if (stat(stats_dir, &st) == 0) {
-    stats_get_obsolete_limits(stats_dir, &max_files, &max_size);
+  if (stat(stats_dir.get(), &st) == 0) {
+    stats_get_obsolete_limits(stats_dir.get(), &max_files, &max_size);
     // STATS_MAXFILES and STATS_MAXSIZE was stored for each top directory.
     max_files *= 16;
     max_size *= 16;
@@ -3444,7 +3430,6 @@ create_initial_config_file(const char* path)
     max_files = 0;
     max_size = g_config.max_size();
   }
-  free(stats_dir);
 
   FILE* f = fopen(path, "w");
   if (!f) {
@@ -3487,12 +3472,11 @@ trace_start(void)
 static void
 trace_stop(void)
 {
-  char* trace_file = format("%s.ccache-trace", output_obj).release();
+  auto trace_file = format("%s.ccache-trace", output_obj);
   MTR_FINISH("program", "ccache", trace_id);
   mtr_flush();
   mtr_shutdown();
-  move_file(tmp_trace_file, trace_file);
-  free(trace_file);
+  move_file(tmp_trace_file, trace_file.get());
   free(tmp_trace_file);
 }
 
@@ -3771,14 +3755,13 @@ ccache(int argc, char* argv[])
 
   FILE* debug_text_file = NULL;
   if (g_config.debug()) {
-    char* path = format("%s.ccache-input-text", output_obj).release();
-    debug_text_file = fopen(path, "w");
+    auto path = format("%s.ccache-input-text", output_obj);
+    debug_text_file = fopen(path.get(), "w");
     if (debug_text_file) {
       exitfn_add(fclose_exitfn, debug_text_file);
     } else {
-      cc_log("Failed to open %s: %s", path, strerror(errno));
+      cc_log("Failed to open %s: %s", path.get(), strerror(errno));
     }
-    free(path);
   }
 
   struct hash* common_hash = hash_init();
