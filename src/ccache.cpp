@@ -287,9 +287,10 @@ add_prefix(struct args* args, const char* prefix_command)
   }
 
   struct args* prefix = args_init(0, NULL);
-  char* e = x_strdup(prefix_command);
+  std::vector<char> e(prefix_command,
+                      prefix_command + strlen(prefix_command) + 1);
   char* saveptr = NULL;
-  for (char* tok = strtok_r(e, " ", &saveptr); tok;
+  for (char* tok = strtok_r(e.data(), " ", &saveptr); tok;
        tok = strtok_r(NULL, " ", &saveptr)) {
     char* p;
 
@@ -301,7 +302,6 @@ add_prefix(struct args* args, const char* prefix_command)
     args_add(prefix, p);
     free(p);
   }
-  free(e);
 
   cc_log("Using command-line prefix %s", prefix_command);
   for (int i = prefix->argc; i != 0; i--) {
