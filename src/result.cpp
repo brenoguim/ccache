@@ -276,7 +276,8 @@ get_raw_file_path(const char* result_path_in_cache, uint32_t entry_number)
   return format("%.*s_%u.raw",
                 (int)strlen(result_path_in_cache) - 7, // .result
                 result_path_in_cache,
-                entry_number);
+                entry_number)
+    .release();
 }
 
 static bool
@@ -424,7 +425,7 @@ read_result(const char* path,
       break;
 
     default:
-      *errmsg = format("Unknown entry type: %u", marker);
+      *errmsg = format("Unknown entry type: %u", marker).release();
       goto out;
     }
 
@@ -434,7 +435,8 @@ read_result(const char* path,
   }
 
   if (i != n_entries) {
-    *errmsg = format("Too few entries (read %u, expected %u)", i, n_entries);
+    *errmsg =
+      format("Too few entries (read %u, expected %u)", i, n_entries).release();
     goto out;
   }
 
@@ -448,7 +450,8 @@ read_result(const char* path,
     } else {
       *errmsg = format("Incorrect checksum (actual %016llx, expected %016llx)",
                        (unsigned long long)actual_checksum,
-                       (unsigned long long)expected_checksum);
+                       (unsigned long long)expected_checksum)
+                  .release();
     }
   }
 
@@ -660,7 +663,7 @@ result_put(const char* path, struct result_files* list)
   bool ok;
   uint64_t content_size;
 
-  char* tmp_file = format("%s.tmp", path);
+  char* tmp_file = format("%s.tmp", path).release();
   int fd = create_tmp_fd(&tmp_file);
   FILE* f = fdopen(fd, "wb");
   if (!f) {

@@ -54,7 +54,7 @@ main(int argc, char** argv)
   x_setenv("CCACHE_DETECT_SHEBANG", "1");
 #endif
 
-  char* testdir = format("testdir.%d", (int)getpid());
+  char* testdir = format("testdir.%d", (int)getpid()).release();
   cct_create_fresh_dir(testdir);
   char* dir_before = gnu_getcwd();
   cct_chdir(testdir);

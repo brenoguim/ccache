@@ -78,7 +78,7 @@ common_header_initialize_for_reading(struct common_header* header,
 {
   uint8_t header_bytes[COMMON_HEADER_SIZE];
   if (fread(header_bytes, sizeof(header_bytes), 1, input) != 1) {
-    *errmsg = format("Failed to read common header");
+    *errmsg = format("Failed to read common header").release();
     return false;
   }
 
@@ -93,14 +93,16 @@ common_header_initialize_for_reading(struct common_header* header,
                      header->magic[0],
                      header->magic[1],
                      header->magic[2],
-                     header->magic[3]);
+                     header->magic[3])
+                .release();
     return false;
   }
 
   if (header->version != expected_version) {
     *errmsg = format("Unknown version (actual %u, expected %u)",
                      header->version,
-                     expected_version);
+                     expected_version)
+                .release();
     return false;
   }
 
@@ -113,10 +115,12 @@ common_header_initialize_for_reading(struct common_header* header,
       return false;
     }
     if ((uint64_t)st.st_size != header->content_size) {
-      *errmsg = format(
-        "Bad uncompressed file size (actual %llu bytes, expected %llu bytes)",
-        (unsigned long long)st.st_size,
-        (unsigned long long)header->content_size);
+      *errmsg =
+        format(
+          "Bad uncompressed file size (actual %llu bytes, expected %llu bytes)",
+          (unsigned long long)st.st_size,
+          (unsigned long long)header->content_size)
+          .release();
       return false;
     }
   }
@@ -127,7 +131,8 @@ common_header_initialize_for_reading(struct common_header* header,
 
   *decompressor = decompressor_from_type(header->compression_type);
   if (!*decompressor) {
-    *errmsg = format("Unknown compression type: %u", header->compression_type);
+    *errmsg = format("Unknown compression type: %u", header->compression_type)
+                .release();
     return false;
   }
 

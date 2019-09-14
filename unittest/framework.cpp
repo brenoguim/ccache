@@ -195,8 +195,8 @@ cct_check_double_eq(const char* file,
     cct_check_passed(file, line, expression);
     return true;
   } else {
-    char* exp_str = format("%.1f", expected);
-    char* act_str = format("%.1f", actual);
+    char* exp_str = format("%.1f", expected).release();
+    char* act_str = format("%.1f", actual).release();
     cct_check_failed(file, line, expression, exp_str, act_str);
     free(exp_str);
     free(act_str);
@@ -215,11 +215,11 @@ cct_check_int_eq(const char* file,
     return true;
   } else {
 #if defined(HAVE_LONG_LONG) && !defined(__MINGW32__)
-    char* exp_str = format("%lld", (long long)expected);
-    char* act_str = format("%lld", (long long)actual);
+    char* exp_str = format("%lld", (long long)expected).release();
+    char* act_str = format("%lld", (long long)actual).release();
 #else
-    char* exp_str = format("%ld", (long)expected);
-    char* act_str = format("%ld", (long)actual);
+    char* exp_str = format("%ld", (long)expected).release();
+    char* act_str = format("%ld", (long)actual).release();
 #endif
     cct_check_failed(file, line, expression, exp_str, act_str);
     free(exp_str);
@@ -266,8 +266,10 @@ cct_check_str_eq(const char* file,
     cct_check_passed(file, line, expression);
     result = true;
   } else {
-    char* exp_str = expected ? format("\"%s\"", expected) : x_strdup("(null)");
-    char* act_str = actual ? format("\"%s\"", actual) : x_strdup("(null)");
+    char* exp_str =
+      expected ? format("\"%s\"", expected).release() : x_strdup("(null)");
+    char* act_str =
+      actual ? format("\"%s\"", actual).release() : x_strdup("(null)");
     cct_check_failed(file, line, expression, exp_str, act_str);
     free(exp_str);
     free(act_str);
@@ -329,9 +331,9 @@ cct_wipe(const char* path)
 {
   // TODO: rewrite using traverse().
 #ifndef __MINGW32__
-  char* command = format("rm -rf %s", path);
+  char* command = format("rm -rf %s", path).release();
 #else
-  char* command = format("rd /s /q %s", path);
+  char* command = format("rd /s /q %s", path).release();
 #endif
   if (system(command) != 0) {
     perror(command);

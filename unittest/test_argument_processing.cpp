@@ -46,7 +46,7 @@ get_posix_path(char* path)
 
   // /-escape volume.
   if (path[0] >= 'A' && path[0] <= 'Z' && path[1] == ':') {
-    posix = format("/%s", path);
+    posix = format("/%s", path).release();
   } else {
     posix = x_strdup(path);
   }
@@ -183,7 +183,8 @@ TEST(sysroot_should_be_rewritten_if_basedir_is_used)
   create_file("foo.c", "");
   g_config.set_base_dir(get_root());
   current_working_dir = get_cwd();
-  arg_string = format("cc --sysroot=%s/foo/bar -c foo.c", current_working_dir);
+  arg_string =
+    format("cc --sysroot=%s/foo/bar -c foo.c", current_working_dir).release();
   orig = args_init_from_string(arg_string);
   free(arg_string);
 
@@ -205,7 +206,8 @@ TEST(sysroot_with_separate_argument_should_be_rewritten_if_basedir_is_used)
   create_file("foo.c", "");
   g_config.set_base_dir(get_root());
   current_working_dir = get_cwd();
-  arg_string = format("cc --sysroot %s/foo -c foo.c", current_working_dir);
+  arg_string =
+    format("cc --sysroot %s/foo -c foo.c", current_working_dir).release();
   orig = args_init_from_string(arg_string);
   free(arg_string);
 
@@ -347,7 +349,7 @@ TEST(fprofile_flag_with_existing_dir_should_be_rewritten_to_real_path)
   mkdir("some", 0777);
   mkdir("some/dir", 0777);
   path = x_realpath("some/dir");
-  s = format("-fprofile-generate=%s", path);
+  s = format("-fprofile-generate=%s", path).release();
   free(path);
   args_add(exp_cpp, s);
   args_add(exp_cc, s);
@@ -390,7 +392,8 @@ TEST(isystem_flag_with_separate_arg_should_be_rewritten_if_basedir_is_used)
   create_file("foo.c", "");
   g_config.set_base_dir(get_root());
   current_working_dir = get_cwd();
-  arg_string = format("cc -isystem %s/foo -c foo.c", current_working_dir);
+  arg_string =
+    format("cc -isystem %s/foo -c foo.c", current_working_dir).release();
   orig = args_init_from_string(arg_string);
   free(arg_string);
 
@@ -415,7 +418,7 @@ TEST(isystem_flag_with_concat_arg_should_be_rewritten_if_basedir_is_used)
   current_working_dir = get_cwd();
   // Windows path doesn't work concatenated.
   cwd = get_posix_path(current_working_dir);
-  arg_string = format("cc -isystem%s/foo -c foo.c", cwd);
+  arg_string = format("cc -isystem%s/foo -c foo.c", cwd).release();
   orig = args_init_from_string(arg_string);
   free(arg_string);
 
@@ -441,7 +444,7 @@ TEST(I_flag_with_concat_arg_should_be_rewritten_if_basedir_is_used)
   current_working_dir = get_cwd();
   // Windows path doesn't work concatenated.
   cwd = get_posix_path(current_working_dir);
-  arg_string = format("cc -I%s/foo -c foo.c", cwd);
+  arg_string = format("cc -I%s/foo -c foo.c", cwd).release();
   orig = args_init_from_string(arg_string);
   free(arg_string);
 

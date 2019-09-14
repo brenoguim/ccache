@@ -320,13 +320,14 @@ get_path_in_cache(const char* name, const char* suffix)
 {
   char* path = x_strdup(g_config.cache_dir().c_str());
   for (unsigned i = 0; i < g_config.cache_dir_levels(); ++i) {
-    char* p = format("%s/%c", path, name[i]);
+    char* p = format("%s/%c", path, name[i]).release();
     free(path);
     path = p;
   }
 
   char* result =
-    format("%s/%s%s", path, name + g_config.cache_dir_levels(), suffix);
+    format("%s/%s%s", path, name + g_config.cache_dir_levels(), suffix)
+      .release();
   free(path);
   return result;
 }
@@ -588,13 +589,13 @@ tmp_string(void)
 {
   static char* ret;
   if (!ret) {
-    ret = format("%s.%u.XXXXXX", get_hostname(), (unsigned)getpid());
+    ret = format("%s.%u.XXXXXX", get_hostname(), (unsigned)getpid()).release();
   }
   return ret;
 }
 
 // Construct a string according to a format. Caller frees.
-char*
+util::unique_mem_ptr<char>
 format(const char* format, ...)
 {
   va_list ap;
@@ -609,7 +610,7 @@ format(const char* format, ...)
   if (!*ptr) {
     fatal("Internal error in format");
   }
-  return ptr;
+  return util::unique_mem_ptr<char>{ptr};
 }
 
 // Construct a hexadecimal string representing binary data. The buffer must
@@ -713,7 +714,7 @@ x_setenv(const char* name, const char* value)
 #ifdef HAVE_SETENV
   setenv(name, value, true);
 #else
-  putenv(format("%s=%s", name, value)); // Leak to environment.
+  putenv(format("%s=%s", name, value).release()); // Leak to environment.
 #endif
 }
 
@@ -724,7 +725,7 @@ x_unsetenv(const char* name)
 #ifdef HAVE_UNSETENV
   unsetenv(name);
 #else
-  putenv(x_strdup(name));               // Leak to environment.
+  putenv(x_strdup(name));                         // Leak to environment.
 #endif
 }
 
@@ -803,7 +804,7 @@ traverse(const char* dir, void (*fn)(const char*, struct stat*))
       continue;
     }
 
-    char* fname = format("%s/%s", dir, de->d_name);
+    char* fname = format("%s/%s", dir, de->d_name).release();
     struct stat st;
     if (lstat(fname, &st)) {
       if (errno != ENOENT && errno != ESTALE) {
@@ -908,9 +909,9 @@ format_human_readable_size(uint64_t v)
 {
   char* s;
   if (v >= 1000 * 1000 * 1000) {
-    s = format("%.1f GB", v / ((double)(1000 * 1000 * 1000)));
+    s = format("%.1f GB", v / ((double)(1000 * 1000 * 1000))).release();
   } else {
-    s = format("%.1f MB", v / ((double)(1000 * 1000)));
+    s = format("%.1f MB", v / ((double)(1000 * 1000))).release();
   }
   return s;
 }
@@ -921,11 +922,11 @@ format_parsable_size_with_suffix(uint64_t size)
 {
   char* s;
   if (size >= 1000 * 1000 * 1000) {
-    s = format("%.1fG", size / ((double)(1000 * 1000 * 1000)));
+    s = format("%.1fG", size / ((double)(1000 * 1000 * 1000))).release();
   } else if (size >= 1000 * 1000) {
-    s = format("%.1fM", size / ((double)(1000 * 1000)));
+    s = format("%.1fM", size / ((double)(1000 * 1000))).release();
   } else {
-    s = format("%u", (unsigned)size);
+    s = format("%u", (unsigned)size).release();
   }
   return s;
 }
@@ -1168,7 +1169,7 @@ strtok_r(char* str, const char* delim, char** saveptr)
 int
 create_tmp_fd(char** fname)
 {
-  char* tmpl = format("%s.%s", *fname, tmp_string());
+  char* tmpl = format("%s.%s", *fname, tmp_string()).release();
   int fd = mkstemp(tmpl);
   if (fd == -1 && errno == ENOENT) {
     if (!util::create_dir(util::dir_name(*fname))) {
@@ -1268,7 +1269,7 @@ same_executable_name(const char* s1, const char* s2)
 #ifdef _WIN32
   bool eq = strcasecmp(s1, s2) == 0;
   if (!eq) {
-    char* tmp = format("%s.exe", s2);
+    char* tmp = format("%s.exe", s2).release();
     eq = strcasecmp(s1, tmp) == 0;
     free(tmp);
   }
@@ -1486,7 +1487,7 @@ do_x_unlink(const char* path, bool log_failure)
   // If path is on an NFS share, unlink isn't atomic, so we rename to a temp
   // file. We don't care if the temp file is trashed, so it's always safe to
   // unlink it first.
-  char* tmp_name = format("%s.rm.%s", path, tmp_string());
+  char* tmp_name = format("%s.rm.%s", path, tmp_string()).release();
 
   int result = 0;
   if (x_rename(path, tmp_name) == -1) {
@@ -1627,7 +1628,7 @@ expand_variable(const char** str, char** result, char** errmsg)
   }
   if (curly) {
     if (*q != '}') {
-      *errmsg = format("syntax error: missing '}' after \"%s\"", p);
+      *errmsg = format("syntax error: missing '}' after \"%s\"", p).release();
       return false;
     }
   }
@@ -1641,7 +1642,7 @@ expand_variable(const char** str, char** result, char** errmsg)
   char* name = x_strndup(p, q - p);
   const char* value = getenv(name);
   if (!value) {
-    *errmsg = format("environment variable \"%s\" not set", name);
+    *errmsg = format("environment variable \"%s\" not set", name).release();
     free(name);
     return false;
   }

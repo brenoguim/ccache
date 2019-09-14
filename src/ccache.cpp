@@ -337,7 +337,7 @@ temp_dir()
   }
   path = g_config.temporary_dir().c_str();
   if (str_eq(path, "")) {
-    path = format("%s/tmp", g_config.cache_dir().c_str());
+    path = format("%s/tmp", g_config.cache_dir().c_str()).release();
   }
   return path;
 }
@@ -480,7 +480,7 @@ clean_up_internal_tempdir(void)
       continue;
     }
 
-    char* path = format("%s/%s", temp_dir(), entry->d_name);
+    char* path = format("%s/%s", temp_dir(), entry->d_name).release();
     if (x_lstat(path, &st) == 0 && st.st_mtime + 3600 < now) {
       tmp_unlink(path);
     }
@@ -503,7 +503,7 @@ dump_debug_log_buffer_exitfn(void* context)
     return;
   }
 
-  char* path = format("%s.ccache-log", (const char*)context);
+  char* path = format("%s.ccache-log", (const char*)context).release();
   cc_dump_debug_log_buffer(path);
   free(path);
 }
@@ -519,7 +519,7 @@ init_hash_debug(struct hash* hash,
     return;
   }
 
-  char* path = format("%s.ccache-input-%c", obj_path, type);
+  char* path = format("%s.ccache-input-%c", obj_path, type).release();
   FILE* debug_binary_file = fopen(path, "wb");
   if (debug_binary_file) {
     hash_enable_debug(hash, section_name, debug_binary_file, debug_text_file);
@@ -675,7 +675,7 @@ remember_include_file(char* path,
     if (g_config.pch_external_checksum()) {
       // hash pch.sum instead of pch when it exists
       // to prevent hashing a very large .pch file every time
-      char* pch_sum_path = format("%s.sum", path);
+      char* pch_sum_path = format("%s.sum", path).release();
       if (x_stat(pch_sum_path, &st) == 0) {
         char* old_path = path;
         path = pch_sum_path;
@@ -765,7 +765,7 @@ make_relative_path(char* path)
     char* p = NULL;
     if (isalpha(path[1]) && path[2] == '/') {
       // Transform /c/path... to c:/path...
-      p = format("%c:/%s", path[1], &path[3]);
+      p = format("%c:/%s", path[1], &path[3]).release();
     } else {
       p = x_strdup(path + 1); // Skip leading slash.
     }
@@ -807,7 +807,7 @@ make_relative_path(char* path)
     char* relpath = get_relative_path(get_current_working_dir(), canon_path);
     free(canon_path);
     if (path_suffix) {
-      path = format("%s/%s", relpath, path_suffix);
+      path = format("%s/%s", relpath, path_suffix).release();
       free(relpath);
       free(path_suffix);
       return path;
@@ -1040,7 +1040,7 @@ use_relative_paths_in_depfile(const char* depfile)
     return;
   }
 
-  char* tmp_file = format("%s.tmp", depfile);
+  char* tmp_file = format("%s.tmp", depfile).release();
   FILE* tmpf = create_tmp_file(&tmp_file, "w");
 
   bool result = false;
@@ -1202,7 +1202,8 @@ update_cached_result_globals(struct digest* result_name)
   cached_result_name = result_name;
   cached_result_path = get_path_in_cache(result_name_string, ".result");
   stats_file =
-    format("%s/%c/stats", g_config.cache_dir().c_str(), result_name_string[0]);
+    format("%s/%c/stats", g_config.cache_dir().c_str(), result_name_string[0])
+      .release();
 }
 
 static bool
@@ -1288,17 +1289,17 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
   int tmp_stderr_fd;
   int status;
   if (!g_config.depend_mode()) {
-    tmp_stdout = format("%s/tmp.stdout", temp_dir());
+    tmp_stdout = format("%s/tmp.stdout", temp_dir()).release();
     tmp_stdout_fd = create_tmp_fd(&tmp_stdout);
-    tmp_stderr = format("%s/tmp.stderr", temp_dir());
+    tmp_stderr = format("%s/tmp.stderr", temp_dir()).release();
     tmp_stderr_fd = create_tmp_fd(&tmp_stderr);
     status = execute(args->argv, tmp_stdout_fd, tmp_stderr_fd, &compiler_pid);
     args_pop(args, 3);
   } else {
     // The cached result path is not known yet, use temporary files.
-    tmp_stdout = format("%s/tmp.stdout", temp_dir());
+    tmp_stdout = format("%s/tmp.stdout", temp_dir()).release();
     tmp_stdout_fd = create_tmp_fd(&tmp_stdout);
-    tmp_stderr = format("%s/tmp.stderr", temp_dir());
+    tmp_stderr = format("%s/tmp.stderr", temp_dir()).release();
     tmp_stderr_fd = create_tmp_fd(&tmp_stderr);
 
     // Use the original arguments (including dependency options) in depend
@@ -1338,7 +1339,7 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
   // Merge stderr from the preprocessor (if any) and stderr from the real
   // compiler into tmp_stderr.
   if (cpp_stderr) {
-    char* tmp_stderr2 = format("%s.2", tmp_stderr);
+    char* tmp_stderr2 = format("%s.2", tmp_stderr).release();
     if (x_rename(tmp_stderr, tmp_stderr2)) {
       cc_log("Failed to rename %s to %s: %s",
              tmp_stderr,
@@ -1481,7 +1482,8 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
     // Remove any CACHEDIR.TAG on the cache_dir level where it was located in
     // previous ccache versions.
     if (getpid() % 1000 == 0) {
-      char* path = format("%s/CACHEDIR.TAG", g_config.cache_dir().c_str());
+      char* path =
+        format("%s/CACHEDIR.TAG", g_config.cache_dir().c_str()).release();
       x_unlink(path);
       free(path);
     }
@@ -1526,12 +1528,12 @@ get_result_name_from_cpp(struct args* args, struct hash* hash)
       input_base[10] = 0;
     }
 
-    path_stdout = format("%s/%s.stdout", temp_dir(), input_base);
+    path_stdout = format("%s/%s.stdout", temp_dir(), input_base).release();
     free(input_base);
     int path_stdout_fd = create_tmp_fd(&path_stdout);
     add_pending_tmp_file(path_stdout);
 
-    path_stderr = format("%s/tmp.cpp_stderr", temp_dir());
+    path_stderr = format("%s/tmp.cpp_stderr", temp_dir()).release();
     int path_stderr_fd = create_tmp_fd(&path_stderr);
     add_pending_tmp_file(path_stderr);
 
@@ -1589,7 +1591,8 @@ get_result_name_from_cpp(struct args* args, struct hash* hash)
   } else {
     // i_tmpfile needs the proper cpp_extension for the compiler to do its
     // thing correctly
-    i_tmpfile = format("%s.%s", path_stdout, g_config.cpp_extension().c_str());
+    i_tmpfile =
+      format("%s.%s", path_stdout, g_config.cpp_extension().c_str()).release();
     x_rename(path_stdout, i_tmpfile);
     add_pending_tmp_file(i_tmpfile);
   }
@@ -1671,7 +1674,7 @@ hash_nvcc_host_compiler(struct hash* hash,
 #endif
     for (size_t i = 0; i < ARRAY_SIZE(compilers); i++) {
       if (ccbin) {
-        char* path = format("%s/%s", ccbin, compilers[i]);
+        char* path = format("%s/%s", ccbin, compilers[i]).release();
         struct stat st;
         if (stat(path, &st) == 0) {
           hash_compiler(hash, &st, path, false);
@@ -1754,7 +1757,8 @@ hash_common_info(struct args* args, struct hash* hash)
         cc_log(
           "Relocating debuginfo CWD %s from %s to %s", cwd, old_path, new_path);
         if (str_startswith(cwd, old_path)) {
-          char* dir = format("%s%s", new_path, cwd + strlen(old_path));
+          char* dir =
+            format("%s%s", new_path, cwd + strlen(old_path)).release();
           free(cwd);
           cwd = dir;
         }
@@ -1793,7 +1797,7 @@ hash_common_info(struct args* args, struct hash* hash)
       char* base_name = x_basename(output_obj);
       char* p = remove_extension(base_name);
       free(base_name);
-      char* gcda_path = format("%s/%s.gcda", dir, p);
+      char* gcda_path = format("%s/%s.gcda", dir, p).release();
       cc_log("Hashing coverage path %s", gcda_path);
       free(p);
       hash_delimiter(hash, "gcda");
@@ -2031,7 +2035,7 @@ calculate_result_name(struct args* args, struct hash* hash, int direct_mode)
       profile_dir = get_cwd();
     }
     char* base_name = remove_extension(output_obj);
-    char* gcda_name = format("%s/%s.gcda", profile_dir, base_name);
+    char* gcda_name = format("%s/%s.gcda", profile_dir, base_name).release();
     cc_log("Adding profile data %s to our hash", gcda_name);
     // Add the gcda to our hash.
     hash_delimiter(hash, "-fprofile-use");
@@ -2084,8 +2088,10 @@ calculate_result_name(struct args* args, struct hash* hash, int direct_mode)
     char manifest_name_string[DIGEST_STRING_BUFFER_SIZE];
     hash_result_as_string(hash, manifest_name_string);
     manifest_path = get_path_in_cache(manifest_name_string, ".manifest");
-    manifest_stats_file = format(
-      "%s/%c/stats", g_config.cache_dir().c_str(), manifest_name_string[0]);
+    manifest_stats_file = format("%s/%c/stats",
+                                 g_config.cache_dir().c_str(),
+                                 manifest_name_string[0])
+                            .release();
 
     cc_log("Looking for result name in %s", manifest_path);
     MTR_BEGIN("manifest", "manifest_get");
@@ -2158,7 +2164,7 @@ from_cache(enum fromcache_call_mode mode, bool put_result_in_manifest)
   MTR_BEGIN("file", "file_get");
 
   // Get result from cache.
-  char* tmp_stderr = format("%s/tmp.stderr", temp_dir());
+  char* tmp_stderr = format("%s/tmp.stderr", temp_dir()).release();
   int tmp_stderr_fd = create_tmp_fd(&tmp_stderr);
   close(tmp_stderr_fd);
 
@@ -2288,18 +2294,18 @@ detect_pch(const char* option, const char* arg, bool* found_pch)
       pch_file = x_strdup(arg);
     }
   } else {
-    char* gchpath = format("%s.gch", arg);
+    char* gchpath = format("%s.gch", arg).release();
     if (stat(gchpath, &st) == 0) {
       cc_log("Detected use of precompiled header: %s", gchpath);
       pch_file = x_strdup(gchpath);
     } else {
-      char* pchpath = format("%s.pch", arg);
+      char* pchpath = format("%s.pch", arg).release();
       if (stat(pchpath, &st) == 0) {
         cc_log("Detected use of precompiled header: %s", pchpath);
         pch_file = x_strdup(pchpath);
       } else {
         // clang may use pretokenized headers.
-        char* pthpath = format("%s.pth", arg);
+        char* pthpath = format("%s.pth", arg).release();
         if (stat(pthpath, &st) == 0) {
           cc_log("Detected use of pretokenized header: %s", pthpath);
           pch_file = x_strdup(pthpath);
@@ -2671,7 +2677,7 @@ cc_process_args(struct args* args,
         args_add(dep_args, "-MF");
         args_add(dep_args, output_dep);
       } else {
-        char* option = format("-MF%s", output_dep);
+        char* option = format("-MF%s", output_dep).release();
         args_add(dep_args, option);
         free(option);
       }
@@ -2697,7 +2703,7 @@ cc_process_args(struct args* args,
       } else {
         char* arg_opt = x_strndup(argv[i], 3);
         relpath = make_relative_path(x_strdup(argv[i] + 3));
-        char* option = format("%s%s", arg_opt, relpath);
+        char* option = format("%s%s", arg_opt, relpath).release();
         args_add(dep_args, option);
         free(arg_opt);
         free(relpath);
@@ -2739,7 +2745,7 @@ cc_process_args(struct args* args,
     }
     if (str_startswith(argv[i], "--sysroot=")) {
       char* relpath = make_relative_path(x_strdup(argv[i] + 10));
-      char* option = format("--sysroot=%s", relpath);
+      char* option = format("--sysroot=%s", relpath).release();
       args_add(common_args, option);
       free(relpath);
       free(option);
@@ -2861,7 +2867,7 @@ cc_process_args(struct args* args,
         // We can get a better hit rate by using the real path here.
         free(arg);
         char* option = x_strndup(argv[i], arg_profile_dir - argv[i]);
-        arg = format("%s=%s", option, dir);
+        arg = format("%s=%s", option, dir).release();
         cc_log("Rewriting %s to %s", argv[i], arg);
         free(option);
         free(dir);
@@ -2983,7 +2989,7 @@ cc_process_args(struct args* args,
         char* option = x_strndup(argv[i], slash_pos - argv[i]);
         if (compopt_takes_concat_arg(option) && compopt_takes_path(option)) {
           char* relpath = make_relative_path(x_strdup(slash_pos));
-          char* new_option = format("%s%s", option, relpath);
+          char* new_option = format("%s%s", option, relpath).release();
           if (compopt_affects_cpp(option)) {
             args_add(cpp_args, new_option);
           } else {
@@ -3120,7 +3126,7 @@ cc_process_args(struct args* args,
         dependency_target_specified = true;
         char* relpath_obj = make_relative_path(x_strdup(abspath_obj));
         // ensure compiler gets relative path.
-        char* relpath_both = format("%s %s", output_dep, relpath_obj);
+        char* relpath_both = format("%s %s", output_dep, relpath_obj).release();
         if (using_sunpro_dependencies) {
           x_setenv("SUNPRO_DEPENDENCIES", relpath_both);
         } else {
@@ -3243,7 +3249,7 @@ cc_process_args(struct args* args,
 
   if (!output_obj) {
     if (output_is_precompiled_header) {
-      output_obj = format("%s.gch", input_file);
+      output_obj = format("%s.gch", input_file).release();
     } else {
       char extension = found_S_opt ? 's' : 'o';
       output_obj = x_basename(input_file);
@@ -3269,7 +3275,7 @@ cc_process_args(struct args* args,
     }
 
     char* base_name = remove_extension(output_obj);
-    output_dwo = format("%s.dwo", base_name);
+    output_dwo = format("%s.dwo", base_name).release();
     free(base_name);
   }
 
@@ -3335,7 +3341,7 @@ cc_process_args(struct args* args,
   if (generating_dependencies) {
     if (!dependency_filename_specified) {
       char* base_name = remove_extension(output_obj);
-      char* default_depfile_name = format("%s.d", base_name);
+      char* default_depfile_name = format("%s.d", base_name).release();
       free(base_name);
       args_add(dep_args, "-MF");
       args_add(dep_args, default_depfile_name);
@@ -3350,13 +3356,13 @@ cc_process_args(struct args* args,
   }
   if (generating_coverage) {
     char* base_name = remove_extension(output_obj);
-    char* default_covfile_name = format("%s.gcno", base_name);
+    char* default_covfile_name = format("%s.gcno", base_name).release();
     free(base_name);
     output_cov = make_relative_path(default_covfile_name);
   }
   if (generating_stackusage) {
     char* base_name = remove_extension(output_obj);
-    char* default_sufile_name = format("%s.su", base_name);
+    char* default_sufile_name = format("%s.su", base_name).release();
     free(base_name);
     output_su = make_relative_path(default_sufile_name);
   }
@@ -3427,7 +3433,7 @@ create_initial_config_file(const char* path)
 
   unsigned max_files;
   uint64_t max_size;
-  char* stats_dir = format("%s/0", g_config.cache_dir().c_str());
+  char* stats_dir = format("%s/0", g_config.cache_dir().c_str()).release();
   struct stat st;
   if (stat(stats_dir, &st) == 0) {
     stats_get_obsolete_limits(stats_dir, &max_files, &max_size);
@@ -3466,7 +3472,7 @@ trace_init(char* path)
 {
   tmp_trace_file = path;
   mtr_init(tmp_trace_file);
-  char* s = format("%f", time_seconds());
+  char* s = format("%f", time_seconds()).release();
   MTR_INSTANT_C("", "", "time", s);
 }
 
@@ -3481,7 +3487,7 @@ trace_start(void)
 static void
 trace_stop(void)
 {
-  char* trace_file = format("%s.ccache-trace", output_obj);
+  char* trace_file = format("%s.ccache-trace", output_obj).release();
   MTR_FINISH("program", "ccache", trace_id);
   mtr_flush();
   mtr_shutdown();
@@ -3519,7 +3525,8 @@ initialize(void)
   if (enable_internal_trace) {
 #ifdef MTR_ENABLED
     // We don't have any conf yet, so we can't use temp_dir() here.
-    trace_init(format("%s/tmp.ccache-trace.%d", tmpdir(), (int)getpid()));
+    trace_init(
+      format("%s/tmp.ccache-trace.%d", tmpdir(), (int)getpid()).release());
 #endif
   }
 
@@ -3527,7 +3534,8 @@ initialize(void)
   if (p) {
     primary_config_path = x_strdup(p);
   } else {
-    secondary_config_path = format("%s/ccache.conf", TO_STRING(SYSCONFDIR));
+    secondary_config_path =
+      format("%s/ccache.conf", TO_STRING(SYSCONFDIR)).release();
     MTR_BEGIN("config", "conf_read_secondary");
     // A missing config file in SYSCONFDIR is OK so don't check return value.
     g_config.update_from_file(secondary_config_path);
@@ -3544,7 +3552,7 @@ initialize(void)
     }
 
     primary_config_path =
-      format("%s/ccache.conf", g_config.cache_dir().c_str());
+      format("%s/ccache.conf", g_config.cache_dir().c_str()).release();
   }
 
   bool should_create_initial_config = false;
@@ -3647,7 +3655,7 @@ set_up_uncached_err(void)
   }
 
   // Leak a pointer to the environment.
-  char* buf = format("UNCACHED_ERR_FD=%d", uncached_fd);
+  char* buf = format("UNCACHED_ERR_FD=%d", uncached_fd).release();
   if (putenv(buf) == -1) {
     cc_log("putenv failed: %s", strerror(errno));
     failed();
@@ -3763,7 +3771,7 @@ ccache(int argc, char* argv[])
 
   FILE* debug_text_file = NULL;
   if (g_config.debug()) {
-    char* path = format("%s.ccache-input-text", output_obj);
+    char* path = format("%s.ccache-input-text", output_obj).release();
     debug_text_file = fopen(path, "w");
     if (debug_text_file) {
       exitfn_add(fclose_exitfn, debug_text_file);

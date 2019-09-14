@@ -192,7 +192,7 @@ format_timestamp(uint64_t timestamp)
     localtime_r((time_t*)&timestamp, &tm);
     char buffer[100];
     strftime(buffer, sizeof(buffer), "%c", &tm);
-    return format("    %s", buffer);
+    return format("    %s", buffer).release();
   } else {
     return NULL;
   }
@@ -223,7 +223,7 @@ parse_stats(struct counters* counters, const char* buf)
 void
 stats_write(const char* path, struct counters* counters)
 {
-  char* tmp_file = format("%s.tmp", path);
+  char* tmp_file = format("%s.tmp", path).release();
   FILE* f = create_tmp_file(&tmp_file, "wb");
   for (size_t i = 0; i < counters->size; i++) {
     if (fprintf(f, "%u\n", counters->data[i]) < 0) {
@@ -267,9 +267,10 @@ stats_collect(struct counters* counters, time_t* last_updated)
     char* fname;
 
     if (dir == -1) {
-      fname = format("%s/stats", g_config.cache_dir().c_str());
+      fname = format("%s/stats", g_config.cache_dir().c_str()).release();
     } else {
-      fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir);
+      fname =
+        format("%s/%1x/stats", g_config.cache_dir().c_str(), dir).release();
     }
 
     counters->data[STATS_ZEROTIMESTAMP] = 0; // Don't add
@@ -344,9 +345,11 @@ stats_flush_to_file(const char* sfile, struct counters* updates)
 
     // A NULL sfile means that we didn't get past calculate_object_hash(), so
     // we just choose one of stats files in the 16 subdirectories.
-    stats_dir = format(
-      "%s/%x", g_config.cache_dir().c_str(), hash_from_int(getpid()) % 16);
-    sfile = format("%s/stats", stats_dir);
+    stats_dir = format("%s/%x",
+                       g_config.cache_dir().c_str(),
+                       hash_from_int(getpid()) % 16)
+                  .release();
+    sfile = format("%s/stats", stats_dir).release();
     free(stats_dir);
   }
 
@@ -465,7 +468,7 @@ stats_summary(void)
     if (stats_info[i].format) {
       value = stats_info[i].format(counters->data[stat]);
     } else {
-      value = format("%8u", counters->data[stat]);
+      value = format("%8u", counters->data[stat]).release();
     }
     if (value) {
       printf("%-31s %s\n", stats_info[i].message, value);
@@ -513,7 +516,7 @@ stats_print(void)
 void
 stats_zero(void)
 {
-  char* fname = format("%s/stats", g_config.cache_dir().c_str());
+  char* fname = format("%s/stats", g_config.cache_dir().c_str()).release();
   x_unlink(fname);
   free(fname);
 
@@ -522,7 +525,7 @@ stats_zero(void)
   for (int dir = 0; dir <= 0xF; dir++) {
     struct counters* counters = counters_init(STATS_END);
     struct stat st;
-    fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir);
+    fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir).release();
     if (stat(fname, &st) != 0) {
       // No point in trying to reset the stats file if it doesn't exist.
       free(fname);
@@ -551,7 +554,7 @@ stats_get_obsolete_limits(const char* dir,
                           uint64_t* maxsize)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* sname = format("%s/stats", dir);
+  char* sname = format("%s/stats", dir).release();
   stats_read(sname, counters);
   *maxfiles = counters->data[STATS_OBSOLETE_MAXFILES];
   *maxsize = (uint64_t)counters->data[STATS_OBSOLETE_MAXSIZE] * 1024;
@@ -564,7 +567,7 @@ void
 stats_set_sizes(const char* dir, unsigned num_files, uint64_t total_size)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* statsfile = format("%s/stats", dir);
+  char* statsfile = format("%s/stats", dir).release();
   if (lockfile_acquire(statsfile, lock_staleness_limit)) {
     stats_read(statsfile, counters);
     counters->data[STATS_NUMFILES] = num_files;
@@ -581,7 +584,7 @@ void
 stats_add_cleanup(const char* dir, unsigned count)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* statsfile = format("%s/stats", dir);
+  char* statsfile = format("%s/stats", dir).release();
   if (lockfile_acquire(statsfile, lock_staleness_limit)) {
     stats_read(statsfile, counters);
     counters->data[STATS_NUMCLEANUPS] += count;

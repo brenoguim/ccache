@@ -322,7 +322,8 @@ read_manifest(const char* path, char** errmsg)
   } else {
     *errmsg = format("Incorrect checksum (actual %016llx, expected %016llx)",
                      (unsigned long long)actual_checksum,
-                     (unsigned long long)expected_checksum);
+                     (unsigned long long)expected_checksum)
+                .release();
   }
 
 out:
@@ -753,7 +754,7 @@ manifest_put(const char* manifest_path,
   add_result_entry(mf, result_name, included_files);
 
   int ret = false;
-  char* tmp_file = format("%s.tmp", manifest_path);
+  char* tmp_file = format("%s.tmp", manifest_path).release();
   int fd = create_tmp_fd(&tmp_file);
   FILE* f = fdopen(fd, "wb");
   if (!f) {

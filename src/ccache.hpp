@@ -166,7 +166,8 @@ bool copy_file(const char* src, const char* dest, bool via_tmp_file);
 bool move_file(const char* src, const char* dest);
 const char* get_hostname(void);
 const char* tmp_string(void);
-char* format(const char* format, ...) ATTR_FORMAT(printf, 1, 2);
+util::unique_mem_ptr<char> format(const char* format, ...)
+  ATTR_FORMAT(printf, 1, 2);
 void format_hex(const uint8_t* data, size_t size, char* buffer);
 void reformat(char** ptr, const char* format, ...) ATTR_FORMAT(printf, 2, 3);
 char* x_strdup(const char* s);

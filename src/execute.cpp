@@ -336,7 +336,7 @@ find_executable_in_path(const char* name,
     }
 #else
     struct stat st1, st2;
-    char* fname = format("%s/%s", tok, name);
+    char* fname = format("%s/%s", tok, name).release();
     // Look for a normal executable file.
     if (access(fname, X_OK) == 0 && lstat(fname, &st1) == 0
         && stat(fname, &st2) == 0 && S_ISREG(st2.st_mode)) {

@@ -29,6 +29,49 @@
 
 namespace util {
 
+template<class T> class unique_mem_ptr
+{
+public:
+  explicit unique_mem_ptr(T* ptr) : m_ptr(ptr)
+  {
+  }
+
+  unique_mem_ptr(const unique_mem_ptr&) = delete;
+  unique_mem_ptr& operator=(const unique_mem_ptr&) = delete;
+
+  unique_mem_ptr(unique_mem_ptr&& other) : m_ptr(other.release())
+  {
+  }
+
+  unique_mem_ptr&
+  operator=(unique_mem_ptr&& other)
+  {
+    std::swap(m_ptr, other.m_ptr);
+  }
+
+  ~unique_mem_ptr()
+  {
+    if (m_ptr != nullptr)
+      free(m_ptr);
+  }
+
+  T*
+  get() const
+  {
+    return m_ptr;
+  }
+  T*
+  release()
+  {
+    T* tmp = m_ptr;
+    m_ptr = nullptr;
+    return tmp;
+  }
+
+private:
+  T* m_ptr{nullptr};
+};
+
 typedef std::function<void(double)> ProgressReceiver;
 typedef std::function<void(std::shared_ptr<CacheFile>)> CacheFileVisitor;
 typedef std::function<void(const std::string& /*dir_path*/,
