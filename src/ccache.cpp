@@ -3438,9 +3438,8 @@ create_initial_config_file(const char* path)
     g_config.set_max_files(max_files);
   }
   if (max_size != 0) {
-    char* size = format_parsable_size_with_suffix(max_size);
-    fprintf(f, "max_size = %s\n", size);
-    free(size);
+    auto size = format_parsable_size_with_suffix(max_size);
+    fprintf(f, "max_size = %s\n", size.get());
     g_config.set_max_size(max_size);
   }
   fclose(f);

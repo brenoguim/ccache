@@ -230,10 +230,7 @@ parse_cache_size(const std::string& value)
 std::string
 format_cache_size(uint64_t value)
 {
-  char* string = format_parsable_size_with_suffix(value);
-  std::string result = string;
-  free(string);
-  return result;
+  return format_parsable_size_with_suffix(value).get();
 }
 
 uint32_t

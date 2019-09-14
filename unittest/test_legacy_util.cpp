@@ -138,16 +138,16 @@ TEST(format_human_readable_size)
 
 TEST(format_parsable_size_with_suffix)
 {
-  CHECK_STR_EQ_FREE2("0", format_parsable_size_with_suffix(0));
-  CHECK_STR_EQ_FREE2("42000", format_parsable_size_with_suffix(42 * 1000));
-  CHECK_STR_EQ_FREE2("1.0M", format_parsable_size_with_suffix(1000 * 1000));
-  CHECK_STR_EQ_FREE2("1.2M", format_parsable_size_with_suffix(1234 * 1000));
+  CHECK_STR_EQ_FREE2("0", format_parsable_size_with_suffix(0).release());
+  CHECK_STR_EQ_FREE2("42000", format_parsable_size_with_suffix(42 * 1000).release());
+  CHECK_STR_EQ_FREE2("1.0M", format_parsable_size_with_suffix(1000 * 1000).release());
+  CHECK_STR_EQ_FREE2("1.2M", format_parsable_size_with_suffix(1234 * 1000).release());
   CHECK_STR_EQ_FREE2("438.5M",
-                     format_parsable_size_with_suffix(438.5 * 1000 * 1000));
+                     format_parsable_size_with_suffix(438.5 * 1000 * 1000).release());
   CHECK_STR_EQ_FREE2("1.0G",
-                     format_parsable_size_with_suffix(1000 * 1000 * 1000));
+                     format_parsable_size_with_suffix(1000 * 1000 * 1000).release());
   CHECK_STR_EQ_FREE2(
-    "17.1G", format_parsable_size_with_suffix(17.11 * 1000 * 1000 * 1000));
+    "17.1G", format_parsable_size_with_suffix(17.11 * 1000 * 1000 * 1000).release());
 }
 
 TEST(parse_size_with_suffix)

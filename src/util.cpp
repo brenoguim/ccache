@@ -917,16 +917,16 @@ format_human_readable_size(uint64_t v)
 }
 
 // Format a size as a parsable string. Caller frees.
-char*
+util::unique_mem_ptr<char>
 format_parsable_size_with_suffix(uint64_t size)
 {
-  char* s;
+  util::unique_mem_ptr<char> s;
   if (size >= 1000 * 1000 * 1000) {
-    s = format("%.1fG", size / ((double)(1000 * 1000 * 1000))).release();
+    s = format("%.1fG", size / ((double)(1000 * 1000 * 1000)));
   } else if (size >= 1000 * 1000) {
-    s = format("%.1fM", size / ((double)(1000 * 1000))).release();
+    s = format("%.1fM", size / ((double)(1000 * 1000)));
   } else {
-    s = format("%u", (unsigned)size).release();
+    s = format("%u", (unsigned)size);
   }
   return s;
 }
