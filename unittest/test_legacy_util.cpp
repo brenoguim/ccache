@@ -119,16 +119,21 @@ TEST(subst_env_in_string)
 
 TEST(format_human_readable_size)
 {
-  CHECK_STR_EQ_FREE2("0.0 MB", format_human_readable_size(0));
-  CHECK_STR_EQ_FREE2("0.0 MB", format_human_readable_size(49));
-  CHECK_STR_EQ_FREE2("0.4 MB", format_human_readable_size(420 * 1000));
-  CHECK_STR_EQ_FREE2("1.0 MB", format_human_readable_size(1000 * 1000));
-  CHECK_STR_EQ_FREE2("1.2 MB", format_human_readable_size(1234 * 1000));
+  CHECK_STR_EQ_FREE2("0.0 MB", format_human_readable_size(0).release());
+  CHECK_STR_EQ_FREE2("0.0 MB", format_human_readable_size(49).release());
+  CHECK_STR_EQ_FREE2("0.4 MB",
+                     format_human_readable_size(420 * 1000).release());
+  CHECK_STR_EQ_FREE2("1.0 MB",
+                     format_human_readable_size(1000 * 1000).release());
+  CHECK_STR_EQ_FREE2("1.2 MB",
+                     format_human_readable_size(1234 * 1000).release());
   CHECK_STR_EQ_FREE2("438.5 MB",
-                     format_human_readable_size(438.5 * 1000 * 1000));
-  CHECK_STR_EQ_FREE2("1.0 GB", format_human_readable_size(1000 * 1000 * 1000));
-  CHECK_STR_EQ_FREE2("17.1 GB",
-                     format_human_readable_size(17.11 * 1000 * 1000 * 1000));
+                     format_human_readable_size(438.5 * 1000 * 1000).release());
+  CHECK_STR_EQ_FREE2("1.0 GB",
+                     format_human_readable_size(1000 * 1000 * 1000).release());
+  CHECK_STR_EQ_FREE2(
+    "17.1 GB",
+    format_human_readable_size(17.11 * 1000 * 1000 * 1000).release());
 }
 
 TEST(format_parsable_size_with_suffix)

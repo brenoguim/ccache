@@ -904,14 +904,14 @@ file_size(const struct stat* st)
 }
 
 // Format a size as a human-readable string. Caller frees.
-char*
+util::unique_mem_ptr<char>
 format_human_readable_size(uint64_t v)
 {
-  char* s;
+  util::unique_mem_ptr<char> s;
   if (v >= 1000 * 1000 * 1000) {
-    s = format("%.1f GB", v / ((double)(1000 * 1000 * 1000))).release();
+    s = format("%.1f GB", v / ((double)(1000 * 1000 * 1000)));
   } else {
-    s = format("%.1f MB", v / ((double)(1000 * 1000))).release();
+    s = format("%.1f MB", v / ((double)(1000 * 1000)));
   }
   return s;
 }

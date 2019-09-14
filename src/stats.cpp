@@ -173,7 +173,7 @@ static struct
 static char*
 format_size(uint64_t size)
 {
-  char* s = format_human_readable_size(size);
+  char* s = format_human_readable_size(size).release();
   reformat(&s, "%11s", s);
   return s;
 }
