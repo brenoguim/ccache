@@ -149,11 +149,11 @@ hash_command_output(struct hash* hash,
   // Add "echo" command.
   bool cmd;
   if (str_startswith(command, "echo")) {
-    command = format("cmd.exe /c \"%s\"", command);
+    command = format("cmd.exe /c \"%s\"", command).release();
     cmd = true;
   } else if (str_startswith(command, "%compiler%")
              && str_eq(compiler, "echo")) {
-    command = format("cmd.exe /c \"%s%s\"", compiler, command + 10);
+    command = format("cmd.exe /c \"%s%s\"", compiler, command + 10).release();
     cmd = true;
   } else {
     command = x_strdup(command);
