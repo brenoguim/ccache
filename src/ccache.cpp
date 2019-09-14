@@ -241,7 +241,7 @@ static bool profile_use = false;
 static bool profile_generate = false;
 
 // Sanitize blacklist
-static std::vector<char*> sanitize_blacklists;
+static std::vector<std::string> sanitize_blacklists;
 
 // Whether we are using a precompiled header (either via -include, #include or
 // clang's -include-pch or -include-pth).
@@ -1803,10 +1803,10 @@ hash_common_info(struct args* args, struct hash* hash)
   }
 
   // Possibly hash the sanitize blacklist file path.
-  for (char* sanitize_blacklist : sanitize_blacklists) {
-    cc_log("Hashing sanitize blacklist %s", sanitize_blacklist);
+  for (const std::string& sanitize_blacklist : sanitize_blacklists) {
+    cc_log("Hashing sanitize blacklist %s", sanitize_blacklist.c_str());
     hash_delimiter(hash, "sanitizeblacklist");
-    if (!hash_file(hash, sanitize_blacklist)) {
+    if (!hash_file(hash, sanitize_blacklist.c_str())) {
       stats_update(STATS_BADEXTRAFILE);
       failed();
     }
@@ -2733,7 +2733,7 @@ cc_process_args(struct args* args,
       continue;
     }
     if (str_startswith(argv[i], "-fsanitize-blacklist=")) {
-      sanitize_blacklists.push_back(x_strdup(argv[i] + 21));
+      sanitize_blacklists.push_back(argv[i] + 21);
       args_add(common_args, argv[i]);
       continue;
     }
@@ -3602,9 +3602,6 @@ cc_reset(void)
   free_and_nullify(current_working_dir);
   debug_prefix_maps.clear();
   free_and_nullify(profile_dir);
-  for (auto& sanitize_blacklist : sanitize_blacklists) {
-    free_and_nullify(sanitize_blacklist);
-  }
   sanitize_blacklists.clear();
   free_and_nullify(included_pch_file);
   args_free(orig_args);
