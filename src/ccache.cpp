@@ -1336,11 +1336,11 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
   // Merge stderr from the preprocessor (if any) and stderr from the real
   // compiler into tmp_stderr.
   if (cpp_stderr) {
-    char* tmp_stderr2 = format("%s.2", tmp_stderr).release();
-    if (x_rename(tmp_stderr, tmp_stderr2)) {
+    auto tmp_stderr2 = format("%s.2", tmp_stderr);
+    if (x_rename(tmp_stderr, tmp_stderr2.get())) {
       cc_log("Failed to rename %s to %s: %s",
              tmp_stderr,
-             tmp_stderr2,
+             tmp_stderr2.get(),
              strerror(errno));
       failed();
     }
@@ -1351,9 +1351,9 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
       failed();
     }
 
-    int fd_real_stderr = open(tmp_stderr2, O_RDONLY | O_BINARY);
+    int fd_real_stderr = open(tmp_stderr2.get(), O_RDONLY | O_BINARY);
     if (fd_real_stderr == -1) {
-      cc_log("Failed opening %s: %s", tmp_stderr2, strerror(errno));
+      cc_log("Failed opening %s: %s", tmp_stderr2.get(), strerror(errno));
       failed();
     }
 
@@ -1369,8 +1369,7 @@ to_cache(struct args* args, struct hash* depend_mode_hash)
     close(fd_cpp_stderr);
     close(fd_real_stderr);
     close(fd_result);
-    tmp_unlink(tmp_stderr2);
-    free(tmp_stderr2);
+    tmp_unlink(tmp_stderr2.get());
   }
 
   if (status != 0) {
@@ -2029,13 +2028,12 @@ calculate_result_name(struct args* args, struct hash* hash, int direct_mode)
       profile_dir = get_cwd();
     }
     char* base_name = remove_extension(output_obj);
-    char* gcda_name = format("%s/%s.gcda", profile_dir, base_name).release();
-    cc_log("Adding profile data %s to our hash", gcda_name);
+    auto gcda_name = format("%s/%s.gcda", profile_dir, base_name);
+    cc_log("Adding profile data %s to our hash", gcda_name.get());
     // Add the gcda to our hash.
     hash_delimiter(hash, "-fprofile-use");
-    hash_file(hash, gcda_name);
+    hash_file(hash, gcda_name.get());
     free(base_name);
-    free(gcda_name);
   }
 
   // Adding -arch to hash since cpp output is affected.

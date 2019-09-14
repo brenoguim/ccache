@@ -1269,9 +1269,8 @@ same_executable_name(const char* s1, const char* s2)
 #ifdef _WIN32
   bool eq = strcasecmp(s1, s2) == 0;
   if (!eq) {
-    char* tmp = format("%s.exe", s2).release();
-    eq = strcasecmp(s1, tmp) == 0;
-    free(tmp);
+    auto tmp = format("%s.exe", s2);
+    eq = strcasecmp(s1, tmp.get()) == 0;
   }
   return eq;
 #else
@@ -1487,15 +1486,15 @@ do_x_unlink(const char* path, bool log_failure)
   // If path is on an NFS share, unlink isn't atomic, so we rename to a temp
   // file. We don't care if the temp file is trashed, so it's always safe to
   // unlink it first.
-  char* tmp_name = format("%s.rm.%s", path, tmp_string()).release();
+  auto tmp_name = format("%s.rm.%s", path, tmp_string());
 
   int result = 0;
-  if (x_rename(path, tmp_name) == -1) {
+  if (x_rename(path, tmp_name.get()) == -1) {
     result = -1;
     saved_errno = errno;
     goto out;
   }
-  if (unlink(tmp_name) == -1) {
+  if (unlink(tmp_name.get()) == -1) {
     // If it was released in a race, that's OK.
     if (errno != ENOENT && errno != ESTALE) {
       result = -1;
@@ -1505,12 +1504,11 @@ do_x_unlink(const char* path, bool log_failure)
 
 out:
   if (result == 0 || log_failure) {
-    cc_log("Unlink %s via %s", path, tmp_name);
+    cc_log("Unlink %s via %s", path, tmp_name.get());
     if (result != 0 && log_failure) {
       cc_log("x_unlink failed: %s", strerror(saved_errno));
     }
   }
-  free(tmp_name);
   errno = saved_errno;
   return result;
 }
