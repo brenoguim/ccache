@@ -177,7 +177,7 @@ win32execute(
   add_exe_ext_if_no_to_fullpath(full_path_win_ext, MAX_PATH, ext, path);
   BOOL ret = FALSE;
   if (length > 8192) {
-    char* tmp_file = format("%s.tmp", path);
+    char* tmp_file = format("%s.tmp", path).release();
     FILE* fp = create_tmp_file(&tmp_file, "w");
     char atfile[MAX_PATH + 3];
     fwrite(args, 1, length, fp);
@@ -326,7 +326,7 @@ find_executable_in_path(const char* name,
     char namebuf[MAX_PATH];
     int ret = SearchPath(tok, name, NULL, sizeof(namebuf), namebuf, NULL);
     if (!ret) {
-      char* exename = format("%s.exe", name);
+      char* exename = format("%s.exe", name).release();
       ret = SearchPath(tok, exename, NULL, sizeof(namebuf), namebuf, NULL);
       free(exename);
     }
