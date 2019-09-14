@@ -180,7 +180,7 @@ static std::unordered_map<std::string, digest> g_included_files;
 static bool has_absolute_include_headers = false;
 
 // List of headers to ignore.
-static std::vector<char*> ignore_headers;
+static std::vector<std::string> ignore_headers;
 
 // Is the compiler being asked to output debug info?
 static bool generating_debuginfo;
@@ -633,12 +633,12 @@ remember_include_file(char* path,
       canonical_len -= 2;
     }
 
-    for (char* ignore : ignore_headers) {
-      size_t ignore_len = strlen(ignore);
+    for (const std::string& ignore : ignore_headers) {
+      size_t ignore_len = ignore.size();
       if (ignore_len > canonical_len) {
         continue;
       }
-      if (strncmp(canonical, ignore, ignore_len) == 0
+      if (strncmp(canonical, ignore.c_str(), ignore_len) == 0
           && (ignore[ignore_len - 1] == DIR_DELIM_CH
               || canonical[ignore_len] == DIR_DELIM_CH
               || canonical[ignore_len] == '\0')) {
@@ -843,7 +843,7 @@ process_preprocessed_file(struct hash* hash, const char* path, bool pump)
     p = x_strdup(g_config.ignore_headers_in_manifest().c_str());
     q = p;
     while ((header = strtok_r(q, PATH_DELIM, &saveptr))) {
-      ignore_headers.push_back(x_strdup(header));
+      ignore_headers.emplace_back(header);
       q = NULL;
     }
     free(p);
@@ -3617,9 +3617,6 @@ cc_reset(void)
   free_and_nullify(cached_result_path);
   free_and_nullify(manifest_path);
   time_of_compilation = 0;
-  for (auto& ignore_header : ignore_headers) {
-    free_and_nullify(ignore_header);
-  }
   ignore_headers.clear();
   g_included_files.clear();
   has_absolute_include_headers = false;
