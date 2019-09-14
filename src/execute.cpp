@@ -315,12 +315,12 @@ find_executable_in_path(const char* name,
                         const char* exclude_name,
                         const char* path)
 {
-  char* path_buf = x_strdup(path);
+  std::vector<char> path_buf(path, path + strlen(path) + 1);
 
   // Search the path looking for the first compiler of the right name that
   // isn't us.
   char* saveptr = NULL;
-  for (char* tok = strtok_r(path_buf, PATH_DELIM, &saveptr); tok;
+  for (char* tok = strtok_r(path_buf.data(), PATH_DELIM, &saveptr); tok;
        tok = strtok_r(NULL, PATH_DELIM, &saveptr)) {
 #ifdef _WIN32
     char namebuf[MAX_PATH];
@@ -332,7 +332,6 @@ find_executable_in_path(const char* name,
     }
     (void)exclude_name;
     if (ret) {
-      free(path_buf);
       return x_strdup(namebuf);
     }
 #else
@@ -357,14 +356,12 @@ find_executable_in_path(const char* name,
       }
 
       // Found it!
-      free(path_buf);
       return fname;
     }
     free(fname);
 #endif
   }
 
-  free(path_buf);
   return NULL;
 }
 
