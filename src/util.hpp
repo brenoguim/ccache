@@ -32,7 +32,7 @@ namespace util {
 template<class T> class unique_mem_ptr
 {
 public:
-  explicit unique_mem_ptr(T* ptr) : m_ptr(ptr)
+  explicit unique_mem_ptr(T* ptr = nullptr) : m_ptr(ptr)
   {
   }
 
@@ -47,6 +47,7 @@ public:
   operator=(unique_mem_ptr&& other)
   {
     std::swap(m_ptr, other.m_ptr);
+    return *this;
   }
 
   ~unique_mem_ptr()
@@ -69,7 +70,7 @@ public:
   }
 
 private:
-  T* m_ptr{nullptr};
+  T* m_ptr;
 };
 
 typedef std::function<void(double)> ProgressReceiver;

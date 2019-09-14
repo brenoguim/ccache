@@ -30,8 +30,8 @@
 bool
 lockfile_acquire(const char* path, unsigned staleness_limit)
 {
-  char* lockfile = format("%s.lock", path).release();
-  char* my_content = NULL;
+  auto lockfile = format("%s.lock", path);
+  util::unique_mem_ptr<char> my_content;
   char* content = NULL;
   char* initial_content = NULL;
   const char* hostname = get_hostname();
@@ -40,18 +40,18 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
   unsigned slept = 0;       // Microseconds.
 
   while (true) {
-    free(my_content);
-    my_content =
-      format("%s:%d:%d", hostname, (int)getpid(), (int)time(NULL)).release();
+    my_content = format("%s:%d:%d", hostname, (int)getpid(), (int)time(NULL));
 
 #if defined(_WIN32) || defined(__CYGWIN__)
-    int fd = open(lockfile, O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0666);
+    int fd = open(lockfile.get(), O_WRONLY | O_CREAT | O_EXCL | O_BINARY, 0666);
     if (fd == -1) {
       int saved_errno = errno;
-      cc_log("lockfile_acquire: open WRONLY %s: %s", lockfile, strerror(errno));
+      cc_log("lockfile_acquire: open WRONLY %s: %s",
+             lockfile.get(),
+             strerror(errno));
       if (saved_errno == ENOENT) {
         // Directory doesn't exist?
-        if (util::create_dir(util::dir_name(lockfile))) {
+        if (util::create_dir(util::dir_name(lockfile.get()))) {
           // OK. Retry.
           continue;
         }
@@ -61,15 +61,16 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
         goto out;
       }
       // Someone else has the lock.
-      fd = open(lockfile, O_RDONLY | O_BINARY);
+      fd = open(lockfile.get(), O_RDONLY | O_BINARY);
       if (fd == -1) {
         if (errno == ENOENT) {
           // The file was removed after the open() call above, so retry
           // acquiring it.
           continue;
         } else {
-          cc_log(
-            "lockfile_acquire: open RDONLY %s: %s", lockfile, strerror(errno));
+          cc_log("lockfile_acquire: open RDONLY %s: %s",
+                 lockfile.get(),
+                 strerror(errno));
           goto out;
         }
       }
@@ -78,7 +79,8 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
       content = static_cast<char*>(x_malloc(bufsize));
       int len = read(fd, content, bufsize - 1);
       if (len == -1) {
-        cc_log("lockfile_acquire: read %s: %s", lockfile, strerror(errno));
+        cc_log(
+          "lockfile_acquire: read %s: %s", lockfile.get(), strerror(errno));
         close(fd);
         goto out;
       }
@@ -86,10 +88,11 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
       content[len] = '\0';
     } else {
       // We got the lock.
-      if (write(fd, my_content, strlen(my_content)) == -1) {
-        cc_log("lockfile_acquire: write %s: %s", lockfile, strerror(errno));
+      if (write(fd, my_content.get(), strlen(my_content.get())) == -1) {
+        cc_log(
+          "lockfile_acquire: write %s: %s", lockfile.get(), strerror(errno));
         close(fd);
-        x_unlink(lockfile);
+        x_unlink(lockfile.get());
         goto out;
       }
       close(fd);
@@ -97,16 +100,18 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
       goto out;
     }
 #else
-    if (symlink(my_content, lockfile) == 0) {
+    if (symlink(my_content.get(), lockfile.get()) == 0) {
       // We got the lock.
       acquired = true;
       goto out;
     }
     int saved_errno = errno;
-    cc_log("lockfile_acquire: symlink %s: %s", lockfile, strerror(saved_errno));
+    cc_log("lockfile_acquire: symlink %s: %s",
+           lockfile.get(),
+           strerror(saved_errno));
     if (saved_errno == ENOENT) {
       // Directory doesn't exist?
-      if (util::create_dir(util::dir_name(lockfile))) {
+      if (util::create_dir(util::dir_name(lockfile.get()))) {
         // OK. Retry.
         continue;
       }
@@ -122,50 +127,51 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
       goto out;
     }
     free(content);
-    content = x_readlink(lockfile);
+    content = x_readlink(lockfile.get());
     if (!content) {
       if (errno == ENOENT) {
         // The symlink was removed after the symlink() call above, so retry
         // acquiring it.
         continue;
       } else {
-        cc_log("lockfile_acquire: readlink %s: %s", lockfile, strerror(errno));
+        cc_log(
+          "lockfile_acquire: readlink %s: %s", lockfile.get(), strerror(errno));
         goto out;
       }
     }
 #endif
 
-    if (str_eq(content, my_content)) {
+    if (str_eq(content, my_content.get())) {
       // Lost NFS reply?
       cc_log("lockfile_acquire: symlink %s failed but we got the lock anyway",
-             lockfile);
+             lockfile.get());
       acquired = true;
       goto out;
     }
     // A possible improvement here would be to check if the process holding the
     // lock is still alive and break the lock early if it isn't.
-    cc_log("lockfile_acquire: lock info for %s: %s", lockfile, content);
+    cc_log("lockfile_acquire: lock info for %s: %s", lockfile.get(), content);
     if (!initial_content) {
       initial_content = x_strdup(content);
     }
     if (slept > staleness_limit) {
       if (str_eq(content, initial_content)) {
         // The lock seems to be stale -- break it.
-        cc_log("lockfile_acquire: breaking %s", lockfile);
+        cc_log("lockfile_acquire: breaking %s", lockfile.get());
         // Try to acquire path.lock.lock:
-        if (lockfile_acquire(lockfile, staleness_limit)) {
-          lockfile_release(path);     // Remove path.lock
-          lockfile_release(lockfile); // Remove path.lock.lock
+        if (lockfile_acquire(lockfile.get(), staleness_limit)) {
+          lockfile_release(path);           // Remove path.lock
+          lockfile_release(lockfile.get()); // Remove path.lock.lock
           to_sleep = 1000;
           slept = 0;
           continue;
         }
       }
-      cc_log("lockfile_acquire: gave up acquiring %s", lockfile);
+      cc_log("lockfile_acquire: gave up acquiring %s", lockfile.get());
       goto out;
     }
     cc_log("lockfile_acquire: failed to acquire %s; sleeping %u microseconds",
-           lockfile,
+           lockfile.get(),
            to_sleep);
     usleep(to_sleep);
     slept += to_sleep;
@@ -174,12 +180,10 @@ lockfile_acquire(const char* path, unsigned staleness_limit)
 
 out:
   if (acquired) {
-    cc_log("Acquired lock %s", lockfile);
+    cc_log("Acquired lock %s", lockfile.get());
   } else {
-    cc_log("Failed to acquire lock %s", lockfile);
+    cc_log("Failed to acquire lock %s", lockfile.get());
   }
-  free(lockfile);
-  free(my_content);
   free(initial_content);
   free(content);
   return acquired;
@@ -190,10 +194,9 @@ out:
 void
 lockfile_release(const char* path)
 {
-  char* lockfile = format("%s.lock", path).release();
-  cc_log("Releasing lock %s", lockfile);
-  tmp_unlink(lockfile);
-  free(lockfile);
+  auto lockfile = format("%s.lock", path);
+  cc_log("Releasing lock %s", lockfile.get());
+  tmp_unlink(lockfile.get());
 }
 
 #ifdef TEST_LOCKFILE

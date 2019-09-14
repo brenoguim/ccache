@@ -264,23 +264,21 @@ stats_collect(struct counters* counters, time_t* last_updated)
 
   // Add up the stats in each directory.
   for (int dir = -1; dir <= 0xF; dir++) {
-    char* fname;
+    util::unique_mem_ptr<char> fname;
 
     if (dir == -1) {
-      fname = format("%s/stats", g_config.cache_dir().c_str()).release();
+      fname = format("%s/stats", g_config.cache_dir().c_str());
     } else {
-      fname =
-        format("%s/%1x/stats", g_config.cache_dir().c_str(), dir).release();
+      fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir);
     }
 
     counters->data[STATS_ZEROTIMESTAMP] = 0; // Don't add
-    stats_read(fname, counters);
+    stats_read(fname.get(), counters);
     zero_timestamp =
       std::max(counters->data[STATS_ZEROTIMESTAMP], zero_timestamp);
-    if (stat(fname, &st) == 0 && st.st_mtime > *last_updated) {
+    if (stat(fname.get(), &st) == 0 && st.st_mtime > *last_updated) {
       *last_updated = st.st_mtime;
     }
-    free(fname);
   }
 
   counters->data[STATS_ZEROTIMESTAMP] = zero_timestamp;
@@ -341,16 +339,11 @@ stats_flush_to_file(const char* sfile, struct counters* updates)
   }
 
   if (!sfile) {
-    char* stats_dir;
-
     // A NULL sfile means that we didn't get past calculate_object_hash(), so
     // we just choose one of stats files in the 16 subdirectories.
-    stats_dir = format("%s/%x",
-                       g_config.cache_dir().c_str(),
-                       hash_from_int(getpid()) % 16)
-                  .release();
-    sfile = format("%s/stats", stats_dir).release();
-    free(stats_dir);
+    auto stats_dir = format(
+      "%s/%x", g_config.cache_dir().c_str(), hash_from_int(getpid()) % 16);
+    sfile = format("%s/stats", stats_dir.get()).release();
   }
 
   if (!lockfile_acquire(sfile, lock_staleness_limit)) {
@@ -516,34 +509,31 @@ stats_print(void)
 void
 stats_zero(void)
 {
-  char* fname = format("%s/stats", g_config.cache_dir().c_str()).release();
-  x_unlink(fname);
-  free(fname);
+  auto fname = format("%s/stats", g_config.cache_dir().c_str());
+  x_unlink(fname.get());
 
   time_t timestamp = time(NULL);
 
   for (int dir = 0; dir <= 0xF; dir++) {
     struct counters* counters = counters_init(STATS_END);
     struct stat st;
-    fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir).release();
-    if (stat(fname, &st) != 0) {
+    fname = format("%s/%1x/stats", g_config.cache_dir().c_str(), dir);
+    if (stat(fname.get(), &st) != 0) {
       // No point in trying to reset the stats file if it doesn't exist.
-      free(fname);
       continue;
     }
-    if (lockfile_acquire(fname, lock_staleness_limit)) {
-      stats_read(fname, counters);
+    if (lockfile_acquire(fname.get(), lock_staleness_limit)) {
+      stats_read(fname.get(), counters);
       for (unsigned i = 0; stats_info[i].message; i++) {
         if (!(stats_info[i].flags & FLAG_NOZERO)) {
           counters->data[stats_info[i].stat] = 0;
         }
       }
       counters->data[STATS_ZEROTIMESTAMP] = timestamp;
-      stats_write(fname, counters);
-      lockfile_release(fname);
+      stats_write(fname.get(), counters);
+      lockfile_release(fname.get());
     }
     counters_free(counters);
-    free(fname);
   }
 }
 
@@ -554,11 +544,10 @@ stats_get_obsolete_limits(const char* dir,
                           uint64_t* maxsize)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* sname = format("%s/stats", dir).release();
-  stats_read(sname, counters);
+  auto sname = format("%s/stats", dir);
+  stats_read(sname.get(), counters);
   *maxfiles = counters->data[STATS_OBSOLETE_MAXFILES];
   *maxsize = (uint64_t)counters->data[STATS_OBSOLETE_MAXSIZE] * 1024;
-  free(sname);
   counters_free(counters);
 }
 
@@ -567,15 +556,14 @@ void
 stats_set_sizes(const char* dir, unsigned num_files, uint64_t total_size)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* statsfile = format("%s/stats", dir).release();
-  if (lockfile_acquire(statsfile, lock_staleness_limit)) {
-    stats_read(statsfile, counters);
+  auto statsfile = format("%s/stats", dir);
+  if (lockfile_acquire(statsfile.get(), lock_staleness_limit)) {
+    stats_read(statsfile.get(), counters);
     counters->data[STATS_NUMFILES] = num_files;
     counters->data[STATS_TOTALSIZE] = total_size / 1024;
-    stats_write(statsfile, counters);
-    lockfile_release(statsfile);
+    stats_write(statsfile.get(), counters);
+    lockfile_release(statsfile.get());
   }
-  free(statsfile);
   counters_free(counters);
 }
 
@@ -584,13 +572,12 @@ void
 stats_add_cleanup(const char* dir, unsigned count)
 {
   struct counters* counters = counters_init(STATS_END);
-  char* statsfile = format("%s/stats", dir).release();
-  if (lockfile_acquire(statsfile, lock_staleness_limit)) {
-    stats_read(statsfile, counters);
+  auto statsfile = format("%s/stats", dir);
+  if (lockfile_acquire(statsfile.get(), lock_staleness_limit)) {
+    stats_read(statsfile.get(), counters);
     counters->data[STATS_NUMCLEANUPS] += count;
-    stats_write(statsfile, counters);
-    lockfile_release(statsfile);
+    stats_write(statsfile.get(), counters);
+    lockfile_release(statsfile.get());
   }
-  free(statsfile);
   counters_free(counters);
 }
